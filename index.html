@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Artist Grid Reference</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Artist Reference Grid Tool</title>
 
 <style>
 
@@ -14,58 +14,48 @@ color:white;
 overflow:hidden;
 }
 
-/* FIXED TOP MENU */
+/* TOP TOOLBAR */
 
 #toolbar{
 position:fixed;
 top:0;
 left:0;
 width:100%;
-
 display:flex;
 gap:10px;
 padding:10px;
-
-background:rgba(20,20,30,0.6);
-backdrop-filter:blur(20px);
-
-border-bottom:1px solid rgba(255,255,255,0.1);
-
+background:rgba(30,30,40,.5);
+backdrop-filter:blur(18px);
+border-bottom:1px solid rgba(255,255,255,.1);
 overflow-x:auto;
-white-space:nowrap;
 z-index:1000;
-
-scrollbar-width:none;
 }
 
-#toolbar::-webkit-scrollbar{
-display:none;
-}
+#toolbar::-webkit-scrollbar{display:none;}
 
 button,input{
-background:rgba(255,255,255,0.08);
+background:rgba(255,255,255,.08);
 color:white;
 border:none;
 padding:8px 14px;
-border-radius:10px;
+border-radius:12px;
 cursor:pointer;
 flex:0 0 auto;
 }
 
-/* CANVAS */
+/* CANVAS AREA */
 
 #canvas{
 position:absolute;
-top:55px;
+top:60px;
 left:0;
 width:100vw;
-height:calc(100vh - 55px);
-
+height:calc(100vh - 60px);
 display:flex;
 align-items:center;
 justify-content:center;
-touch-action:none;
 overflow:hidden;
+touch-action:none;
 }
 
 #viewer{
@@ -76,6 +66,9 @@ transform-origin:center;
 #img{
 display:block;
 max-width:none;
+user-select:none;
+-webkit-user-drag:none;
+-webkit-touch-callout:none;
 }
 
 #gridCanvas{
@@ -84,6 +77,8 @@ top:0;
 left:0;
 pointer-events:none;
 }
+
+/* COORDINATE */
 
 #coord{
 position:fixed;
@@ -107,6 +102,7 @@ font-size:14px;
 
 <button id="zoomIn">Zoom +</button>
 <button id="zoomOut">Zoom -</button>
+
 <button id="reset">Reset</button>
 
 <button id="gridToggle">Grid</button>
@@ -140,16 +136,24 @@ const canvas=document.getElementById("canvas")
 
 let scale=1,x=0,y=0
 let locked=false
-let gridVisible=false
 
+let gridVisible=false
 let rows=8
 let cols=8
+
+/* BLOCK IMAGE SAVE / POPUP */
+
+document.addEventListener("contextmenu",e=>e.preventDefault())
+
+img.addEventListener("dragstart",e=>e.preventDefault())
+
+/* TRANSFORM UPDATE */
 
 function update(){
 viewer.style.transform=`translate(${x}px,${y}px) scale(${scale})`
 }
 
-/* DRAW GRID */
+/* GRID DRAW */
 
 function drawGrid(){
 
@@ -171,30 +175,30 @@ ctx.fillStyle="white"
 
 for(let i=0;i<=cols;i++){
 
-let x=i*cellW
+let px=i*cellW
 
 ctx.beginPath()
-ctx.moveTo(x,0)
-ctx.lineTo(x,h)
+ctx.moveTo(px,0)
+ctx.lineTo(px,h)
 ctx.stroke()
 
 if(i<cols){
-ctx.fillText(String.fromCharCode(65+i),x+5,15)
+ctx.fillText(String.fromCharCode(65+i),px+5,15)
 }
 
 }
 
 for(let j=0;j<=rows;j++){
 
-let y=j*cellH
+let py=j*cellH
 
 ctx.beginPath()
-ctx.moveTo(0,y)
-ctx.lineTo(w,y)
+ctx.moveTo(0,py)
+ctx.lineTo(w,py)
 ctx.stroke()
 
 if(j<rows){
-ctx.fillText(j+1,5,y-5)
+ctx.fillText(j+1,5,py-5)
 }
 
 }
@@ -210,7 +214,9 @@ let reader=new FileReader()
 
 reader.onload=()=>{
 
-img.onload=()=>{drawGrid()}
+img.onload=()=>{
+if(gridVisible)drawGrid()
+}
 
 img.src=reader.result
 
@@ -246,7 +252,7 @@ ctx.clearRect(0,0,gridCanvas.width,gridCanvas.height)
 let dragging=false,startX,startY
 
 viewer.addEventListener("mousedown",e=>{
-if(locked) return
+if(locked)return
 dragging=true
 startX=e.clientX-x
 startY=e.clientY-y
@@ -256,7 +262,7 @@ window.addEventListener("mouseup",()=>dragging=false)
 
 window.addEventListener("mousemove",e=>{
 
-if(!dragging||locked) return
+if(!dragging||locked)return
 
 x=e.clientX-startX
 y=e.clientY-startY
@@ -265,11 +271,11 @@ update()
 
 })
 
-/* ZOOM */
+/* MOUSE ZOOM */
 
 window.addEventListener("wheel",e=>{
 
-if(locked) return
+if(locked)return
 e.preventDefault()
 
 scale+=e.deltaY*-0.001
@@ -285,7 +291,7 @@ let lastDist=0,lastX=0,lastY=0
 
 canvas.addEventListener("touchstart",e=>{
 
-if(locked) return
+if(locked)return
 
 if(e.touches.length==1){
 
@@ -304,7 +310,7 @@ lastDist=getDist(e)
 
 canvas.addEventListener("touchmove",e=>{
 
-if(locked) return
+if(locked)return
 e.preventDefault()
 
 if(e.touches.length==1){
@@ -347,9 +353,11 @@ return Math.sqrt(dx*dx+dy*dy)
 
 }
 
-/* COORDINATE */
+/* COORDINATE SYSTEM */
 
 canvas.addEventListener("mousemove",e=>{
+
+if(!gridVisible)return
 
 let rect=img.getBoundingClientRect()
 
@@ -362,7 +370,7 @@ let cellH=img.height/rows
 let col=Math.floor(px/cellW)
 let row=Math.floor(py/cellH)
 
-if(col>=0 && row>=0){
+if(col>=0&&row>=0){
 
 let label=String.fromCharCode(65+col)+(row+1)
 
@@ -372,13 +380,22 @@ document.getElementById("coord").innerText="Coordinate: "+label
 
 })
 
+/* BUTTONS */
+
 zoomIn.onclick=()=>{if(!locked){scale+=0.1;update()}}
 zoomOut.onclick=()=>{if(!locked){scale-=0.1;update()}}
 
 reset.onclick=()=>{if(!locked){scale=1;x=0;y=0;update()}}
 
-lock.onclick=()=>{locked=true;document.documentElement.requestFullscreen()}
-unlock.onclick=()=>{locked=false;document.exitFullscreen()}
+lock.onclick=()=>{
+locked=true
+document.documentElement.requestFullscreen()
+}
+
+unlock.onclick=()=>{
+locked=false
+document.exitFullscreen()
+}
 
 </script>
 
