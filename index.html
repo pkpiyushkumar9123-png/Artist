@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artist Grid Reference</title>
+
+<style>
+
+body{
+margin:0;
+background:linear-gradient(135deg,#0f172a,#020617);
+font-family:system-ui;
+color:white;
+overflow:hidden;
+}
+
+#toolbar{
+position:fixed;
+top:15px;
+left:50%;
+transform:translateX(-50%);
+display:flex;
+gap:10px;
+padding:12px;
+
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(20px);
+
+border-radius:20px;
+border:1px solid rgba(255,255,255,0.15);
+
+overflow-x:auto;
+max-width:95vw;
+white-space:nowrap;
+scrollbar-width:none;
+}
+
+#toolbar::-webkit-scrollbar{
+display:none;
+}
+
+button,input{
+background:rgba(255,255,255,0.08);
+color:white;
+border:none;
+padding:8px 14px;
+border-radius:10px;
+cursor:pointer;
+flex:0 0 auto;
+}
+
+#canvas{
+width:100vw;
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+touch-action:none;
+overflow:hidden;
+}
+
+#viewer{
+position:relative;
+transform-origin:center;
+}
+
+#img{
+display:block;
+max-width:none;
+}
+
+#gridCanvas{
+position:absolute;
+top:0;
+left:0;
+pointer-events:none;
+}
+
+#coord{
+position:fixed;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+background:rgba(0,0,0,.6);
+padding:6px 12px;
+border-radius:10px;
+font-size:14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="toolbar">
+
+<input type="file" id="upload">
+
+<button id="zoomIn">Zoom +</button>
+<button id="zoomOut">Zoom -</button>
+<button id="reset">Reset</button>
+
+<button id="gridToggle">Grid</button>
+
+<button id="lock">Lock</button>
+<button id="unlock">Unlock</button>
+
+</div>
+
+<div id="canvas">
+
+<div id="viewer">
+
+<img id="img">
+
+<canvas id="gridCanvas"></canvas>
+
+</div>
+
+</div>
+
+<div id="coord">Coordinate: -</div>
+
+<script>
+
+const img=document.getElementById("img")
+const viewer=document.getElementById("viewer")
+const gridCanvas=document.getElementById("gridCanvas")
+const ctx=gridCanvas.getContext("2d")
+const canvas=document.getElementById("canvas")
+
+let scale=1,x=0,y=0
+let locked=false
+let gridVisible=false
+
+let rows=8
+let cols=8
+
+function update(){
+viewer.style.transform=`translate(${x}px,${y}px) scale(${scale})`
+}
+
+/* DRAW GRID */
+
+function drawGrid(){
+
+let w=img.width
+let h=img.height
+
+gridCanvas.width=w
+gridCanvas.height=h
+
+ctx.clearRect(0,0,w,h)
+
+let cellW=w/cols
+let cellH=h/rows
+
+ctx.strokeStyle="rgba(255,255,255,.4)"
+ctx.lineWidth=1
+ctx.font="14px sans-serif"
+ctx.fillStyle="white"
+
+for(let i=0;i<=cols;i++){
+
+let x=i*cellW
+
+ctx.beginPath()
+ctx.moveTo(x,0)
+ctx.lineTo(x,h)
+ctx.stroke()
+
+if(i<cols){
+ctx.fillText(String.fromCharCode(65+i),x+5,15)
+}
+
+}
+
+for(let j=0;j<=rows;j++){
+
+let y=j*cellH
+
+ctx.beginPath()
+ctx.moveTo(0,y)
+ctx.lineTo(w,y)
+ctx.stroke()
+
+if(j<rows){
+ctx.fillText(j+1,5,y-5)
+}
+
+}
+
+}
+
+/* IMAGE LOAD */
+
+upload.onchange=e=>{
+
+let file=e.target.files[0]
+let reader=new FileReader()
+
+reader.onload=()=>{
+
+img.onload=()=>{
+drawGrid()
+}
+
+img.src=reader.result
+
+}
+
+reader.readAsDataURL(file)
+
+}
+
+/* GRID BUTTON */
+
+gridToggle.onclick=()=>{
+
+if(!gridVisible){
+
+rows=parseInt(prompt("Enter number of rows:",8))||8
+cols=parseInt(prompt("Enter number of columns:",8))||8
+
+gridVisible=true
+drawGrid()
+
+}else{
+
+gridVisible=false
+ctx.clearRect(0,0,gridCanvas.width,gridCanvas.height)
+
+}
+
+}
+
+/* DRAG */
+
+let dragging=false,startX,startY
+
+viewer.addEventListener("mousedown",e=>{
+if(locked) return
+dragging=true
+startX=e.clientX-x
+startY=e.clientY-y
+})
+
+window.addEventListener("mouseup",()=>dragging=false)
+
+window.addEventListener("mousemove",e=>{
+
+if(!dragging||locked) return
+
+x=e.clientX-startX
+y=e.clientY-startY
+
+update()
+
+})
+
+/* SCROLL ZOOM */
+
+window.addEventListener("wheel",e=>{
+
+if(locked) return
+e.preventDefault()
+
+scale+=e.deltaY*-0.001
+scale=Math.min(Math.max(.2,scale),10)
+
+update()
+
+},{passive:false})
+
+/* TOUCH */
+
+let lastDist=0,lastX=0,lastY=0
+
+canvas.addEventListener("touchstart",e=>{
+
+if(locked) return
+
+if(e.touches.length==1){
+
+lastX=e.touches[0].clientX
+lastY=e.touches[0].clientY
+
+}
+
+if(e.touches.length==2){
+
+lastDist=getDist(e)
+
+}
+
+})
+
+canvas.addEventListener("touchmove",e=>{
+
+if(locked) return
+e.preventDefault()
+
+if(e.touches.length==1){
+
+let dx=e.touches[0].clientX-lastX
+let dy=e.touches[0].clientY-lastY
+
+x+=dx
+y+=dy
+
+lastX=e.touches[0].clientX
+lastY=e.touches[0].clientY
+
+update()
+
+}
+
+if(e.touches.length==2){
+
+let dist=getDist(e)
+let delta=dist-lastDist
+
+scale+=delta*0.005
+scale=Math.min(Math.max(.2,scale),10)
+
+lastDist=dist
+
+update()
+
+}
+
+},{passive:false})
+
+function getDist(e){
+
+let dx=e.touches[0].clientX-e.touches[1].clientX
+let dy=e.touches[0].clientY-e.touches[1].clientY
+
+return Math.sqrt(dx*dx+dy*dy)
+
+}
+
+/* COORDINATE DISPLAY */
+
+canvas.addEventListener("mousemove",e=>{
+
+let rect=img.getBoundingClientRect()
+
+let px=(e.clientX-rect.left)/scale
+let py=(e.clientY-rect.top)/scale
+
+let cellW=img.width/cols
+let cellH=img.height/rows
+
+let col=Math.floor(px/cellW)
+let row=Math.floor(py/cellH)
+
+if(col>=0 && row>=0){
+
+let label=String.fromCharCode(65+col)+(row+1)
+
+document.getElementById("coord").innerText="Coordinate: "+label
+
+}
+
+})
+
+/* BUTTONS */
+
+zoomIn.onclick=()=>{if(!locked){scale+=0.1;update()}}
+zoomOut.onclick=()=>{if(!locked){scale-=0.1;update()}}
+
+reset.onclick=()=>{if(!locked){scale=1;x=0;y=0;update()}}
+
+/* LOCK */
+
+lock.onclick=()=>{
+
+locked=true
+document.documentElement.requestFullscreen()
+
+}
+
+unlock.onclick=()=>{
+
+locked=false
+document.exitFullscreen()
+
+}
+
+</script>
+
+</body>
+</html>
