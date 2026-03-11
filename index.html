@@ -14,24 +14,27 @@ color:white;
 overflow:hidden;
 }
 
+/* FIXED TOP MENU */
+
 #toolbar{
 position:fixed;
-top:15px;
-left:50%;
-transform:translateX(-50%);
+top:0;
+left:0;
+width:100%;
+
 display:flex;
 gap:10px;
-padding:12px;
+padding:10px;
 
-background:rgba(255,255,255,0.08);
+background:rgba(20,20,30,0.6);
 backdrop-filter:blur(20px);
 
-border-radius:20px;
-border:1px solid rgba(255,255,255,0.15);
+border-bottom:1px solid rgba(255,255,255,0.1);
 
 overflow-x:auto;
-max-width:95vw;
 white-space:nowrap;
+z-index:1000;
+
 scrollbar-width:none;
 }
 
@@ -49,9 +52,15 @@ cursor:pointer;
 flex:0 0 auto;
 }
 
+/* CANVAS */
+
 #canvas{
+position:absolute;
+top:55px;
+left:0;
 width:100vw;
-height:100vh;
+height:calc(100vh - 55px);
+
 display:flex;
 align-items:center;
 justify-content:center;
@@ -78,7 +87,7 @@ pointer-events:none;
 
 #coord{
 position:fixed;
-bottom:20px;
+bottom:15px;
 left:50%;
 transform:translateX(-50%);
 background:rgba(0,0,0,.6);
@@ -201,9 +210,7 @@ let reader=new FileReader()
 
 reader.onload=()=>{
 
-img.onload=()=>{
-drawGrid()
-}
+img.onload=()=>{drawGrid()}
 
 img.src=reader.result
 
@@ -219,8 +226,8 @@ gridToggle.onclick=()=>{
 
 if(!gridVisible){
 
-rows=parseInt(prompt("Enter number of rows:",8))||8
-cols=parseInt(prompt("Enter number of columns:",8))||8
+rows=parseInt(prompt("Rows:",8))||8
+cols=parseInt(prompt("Columns:",8))||8
 
 gridVisible=true
 drawGrid()
@@ -258,7 +265,7 @@ update()
 
 })
 
-/* SCROLL ZOOM */
+/* ZOOM */
 
 window.addEventListener("wheel",e=>{
 
@@ -340,7 +347,7 @@ return Math.sqrt(dx*dx+dy*dy)
 
 }
 
-/* COORDINATE DISPLAY */
+/* COORDINATE */
 
 canvas.addEventListener("mousemove",e=>{
 
@@ -365,28 +372,13 @@ document.getElementById("coord").innerText="Coordinate: "+label
 
 })
 
-/* BUTTONS */
-
 zoomIn.onclick=()=>{if(!locked){scale+=0.1;update()}}
 zoomOut.onclick=()=>{if(!locked){scale-=0.1;update()}}
 
 reset.onclick=()=>{if(!locked){scale=1;x=0;y=0;update()}}
 
-/* LOCK */
-
-lock.onclick=()=>{
-
-locked=true
-document.documentElement.requestFullscreen()
-
-}
-
-unlock.onclick=()=>{
-
-locked=false
-document.exitFullscreen()
-
-}
+lock.onclick=()=>{locked=true;document.documentElement.requestFullscreen()}
+unlock.onclick=()=>{locked=false;document.exitFullscreen()}
 
 </script>
 
